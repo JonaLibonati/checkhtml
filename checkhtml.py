@@ -1,4 +1,5 @@
 import re
+import os
 
 from classes import menu
 from classes import testReport
@@ -8,7 +9,7 @@ from classes import cmdArguments
 Report = testReport.TestReport('')
 
 def checkSyntax(htmlLines):
-	self_closing_tags = ["base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr", "!", "o:", "if", "path"]
+	self_closing_tags = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "path", "source", "track", "wbr", "!", "o:", "if"]
 	tags = []
 	filtered_tags = []
 
@@ -34,6 +35,8 @@ def checkSyntax(htmlLines):
 		for char in line:
 			if char == ' ':
 				i += 1
+			elif char == '	':
+				continue
 			else:
 				break
 		return i
@@ -43,6 +46,8 @@ def checkSyntax(htmlLines):
 		for char in line:
 			if char == '	':
 				i += 1
+			elif char == ' ':
+				continue
 			else:
 				break
 		return i
@@ -57,67 +62,90 @@ def checkSyntax(htmlLines):
 		return tag_names
 
 
-	def findUnclosedTags(errorList, unclosed_tag_list = []):
-		error_list = errorList
-		first_error = errorList[0]
-		control_error_list = errorList[1:]
-		sub_error_list = []
+	def findUnclosedTags(tag_list, unclosed_tag_list = []):
+		filtered_tags = tag_list
+		first_tag = tag_list[0]
+		control_tag_list = tag_list[1:]
+		sub_tags_list = []
 		sub_unclosed_tags = []
 		unclosed_tags = unclosed_tag_list
 		unclosed = True
 
-		error_list.pop(0)
-		if len(error_list) > 0 and not isClosingTag(first_error['name']) and not first_error in unclosed_tag_list:
+		filtered_tags.pop(0)
+		if len(filtered_tags) > 0 and not isClosingTag(first_tag['name']) and not first_tag in unclosed_tag_list:
 			n_open = 0
 			n_close = 0
-			for i, control_error in enumerate(control_error_list):
-				if first_error['name'] == control_error['name'].replace('/',''):
-					if isClosingTag(control_error['name']):
+			for i, control_tag in enumerate(control_tag_list):
+				if first_tag['name'] == control_tag['name'].replace('/',''):
+					if isClosingTag(control_tag['name']):
 						if n_open == n_close:
-							error_list.pop(i)
+							filtered_tags.pop(i)
 							unclosed = False
 							break
 						n_close = n_close + 1
 					else:
 						n_open = n_open + 1
-				sub_error_list.append(control_error)
+				sub_tags_list.append(control_tag)
 
-		while sub_error_list != []:
-			response = findUnclosedTags(sub_error_list, sub_unclosed_tags)
-			sub_error_list = response[0]
+		while sub_tags_list != []:
+			response = findUnclosedTags(sub_tags_list, sub_unclosed_tags)
+			sub_tags_list = response[0]
 			sub_unclosed_tags = response[1]
 
 		for sub_unclosed_tag in sub_unclosed_tags:
 			if not sub_unclosed_tag in unclosed_tag_list:
 				unclosed_tags.append(sub_unclosed_tag)
-		if unclosed and not first_error in unclosed_tag_list:
-			unclosed_tags.append(first_error)
+		if unclosed and not first_tag in unclosed_tag_list:
+			unclosed_tags.append(first_tag)
 
-		return [error_list, unclosed_tags]
+		return [filtered_tags, unclosed_tags]
 
-	def findIndentationErrors(tag_list, unclosed_tags, error_list = []):
-		filtered_tags = tag_list
-		first_tag = tag_list[0]
-		control_tag_list = tag_list[1:]
+	def findIndentationErrors(tag_list, error_list = [], unclosed_tags = []):
+		filtered_tags = []
+		for tag in tag_list:
+			if not tag in unclosed_tags:
+				filtered_tags.append(tag)
+		first_tag = filtered_tags[0]
+		control_tag_list = filtered_tags[1:]
+		sub_tags_list = []
+		sub_error_tags = []
 		errorList = error_list
-		error_exist = True
+		errors = True
 		#This function use two indentation criteria:
 		#	1) opening tag and closing tag are in the same line
 		#	2) opening tag and closing tag are not in the same line but both have the the same indentation.
 		filtered_tags.pop(0)
+		n_open = 0
+		n_close = 0
 		for i, control_tag in enumerate(control_tag_list):
-			if isClosingTag(first_tag['name']):
-				break
-			elif first_tag['name'] == control_tag['name'].replace('/',''):
-				if first_tag['spaces'] == control_tag['spaces'] and first_tag['tabs'] == control_tag['tabs'] and isClosingTag(control_tag['name']):
-					filtered_tags.pop(i)
-					error_exist = False
-					break
-				elif first_tag['spaces'] >= control_tag['spaces'] and first_tag['tabs'] >= control_tag['tabs'] and first_tag['line'] != control_tag['line'] and not isClosingTag(control_tag['name']):
-					break
+			if first_tag['name'] == control_tag['name'].replace('/',''):
+				if isClosingTag(control_tag['name']):
+					if n_open == n_close:
+						if (first_tag['spaces'] == control_tag['spaces'] and first_tag['tabs'] == control_tag['tabs']) or (first_tag['line'] == control_tag['line']):
+							errors = False
+						filtered_tags.pop(i)
+						break
+					n_close = n_close + 1
+				else:
+					n_open = n_open + 1
+				sub_tags_list.append(control_tag)
+			if (control_tag['spaces'] <= first_tag['spaces'] and control_tag['tabs'] <= first_tag['tabs']):
+					if sub_tags_list != []:
+						if sub_tags_list[-1]['line'] != control_tag['line']:
+							sub_error_tags.append(('', control_tag))
+					elif (first_tag['line'] != control_tag['line']):
+						sub_error_tags.append(('', control_tag))
 
-		if error_exist and not first_tag in unclosed_tags:
-			errorList.append(first_tag)
+		while sub_tags_list != []:
+			response = findIndentationErrors(sub_tags_list, sub_error_tags)
+			sub_tags_list = response[0]
+			sub_error_tags = response[1]
+
+		for sub_error_tag in sub_error_tags:
+			if not sub_error_tag in errorList:
+				errorList.append(sub_error_tag)
+		if errors and not (first_tag, control_tag) in errorList:
+			errorList.append((first_tag, control_tag))
 
 		return [filtered_tags, errorList]
 
@@ -141,7 +169,7 @@ def checkSyntax(htmlLines):
 	filtered_tags = filterSelfClosingTags(tags)
 	#Finding indentation errors.
 	while filtered_tags != []:
-		response = findIndentationErrors(filtered_tags, unclosed, indentation)
+		response = findIndentationErrors(filtered_tags, indentation, unclosed)
 		filtered_tags = response[0]
 		indentation = response[1]
 	#Saving Flags
@@ -161,41 +189,20 @@ def checkSyntax(htmlLines):
 		section_2.addResult(r)
 	else:
 		for error in indentation:
-			r = testReport.Result(f"Indentation errors found in line {error['line']}. Check the syntax for the <{error['name']}> tag.", 'fail')
-			section_2.addResult(r)
+			if error[0] == '':
+				r = testReport.Result(
+					'Indentation error found. Check the syntax for:\n'\
+					f"	Tag: <{error[1]['name']}> in line {error[1]['line']}\n", 'fail')
+				section_2.addResult(r)
+			else:
+				r = testReport.Result(
+					'Indentation error found. Check the syntax for:\n'\
+					f"	Opening tag: <{error[0]['name']}> in line {error[0]['line']}\n"\
+					f"	Closing tag: <{error[1]['name']}> in line {error[1]['line']}\n", 'fail')
+				section_2.addResult(r)
 		comment = testReport.Result(
-			'\n=============================================\n'\
-			'\nThis tool use two indentation criteria:\n'\
-			'1) opening tag and closing tag are in the same line.\n'\
-			'2) opening tag and closing tag are not in the same line but both have the the same indentation.\n\n'\
-			'✅ Examples of Good indentation\n'\
-			'01--<div><p>content</p></div>\n'\
-			'02\n'\
-			'03--<div>\n'\
-			'04----<p>content</p>\n'\
-			'05--</div>\n'\
-			'06\n'\
-			'07--<div>\n'\
-			'08----<p>\n'\
-			'09------content\n'\
-			'10----</p>\n'\
-			'11--</div>\n'\
-			'12\n\n'\
-			'❌ Examples of Bad indentation\n'\
-			'01--<div><p>\n'\
-			'02----content</p></div>\n'\
-			'03\n'\
-			'04----<div>\n'\
-			'05----<p>content</p>\n'\
-			'06--</div>\n'\
-			'07\n'\
-			'08--<div>\n'\
-			'09----<p>\n'\
-			'10------content\n'\
-			'11----</p>\n'\
-			'12----</div>\n'\
-			'13\n\n'\
-			,'comment')
+			'# For further information about the indentation rules which are used by this script, use the following command:\n#\n'\
+			'#	 python3 <script-path/checkhtml.py> -h\n','comment')
 		section_2.addResult(comment)
 
 	global Report
@@ -214,6 +221,7 @@ def help():
     print("Help")
 
 def processArgs():
+	global Report
 	cmd = cmdArguments.CmdArgs()
 	if not cmd.optionsQty() == 0:
 		cmd_opt = cmd.options[0]
@@ -238,6 +246,8 @@ def processArgs():
 		elif  cmd.optionsQty() == 0:
 			if cmd_input.isValidInputType(".html"):
 				checkSyntax(html(cmd_input.path))
+				Report.setName(os.path.split(cmd_input.path)[1])
+				Report.print()
 				pass
 			else:
 				error = "🔴 The input is not a HTML file."
@@ -249,10 +259,7 @@ def processArgs():
 		print(error)
 
 def main():
-	global Report
 	processArgs()
-	#Report.setName(os.path.split(dm_path)[1])
-	Report.print()
 
 if __name__ == "__main__":
 	main()
