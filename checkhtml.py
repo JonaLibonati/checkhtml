@@ -218,7 +218,74 @@ def html(html_path):
         print("🔴 Your input file could not be found.")
 
 def help():
-    print("Help")
+    print(
+		'\n----- Help -----\n\n'\
+		'###### checkhtml.py ######\n\n'\
+		'This script is useful for checking the indentation an unclosed tag on a html.\n'\
+		'\n'\
+		'## Running the tool ##\n\n'\
+		'Running the script by using python3 and the [html-path]:\n'\
+		'\n'\
+		'	python3 <script-path> <html-path>\n'\
+		'\n'\
+		'For example, if you are located in the script folder:\n'\
+		'\n'\
+		'	python3 checkhtml.py <html-path>\n'\
+		'\n'\
+		'## Unclosed tags ##\n\n'\
+		'The tool finds where are located the unclosed tags.\n'\
+		'\n'\
+		'The following self-closing tags are pre filtered in order to avoid the flag of the expected unclosed tag:\n'\
+		'	* area\n'\
+		'	* base\n'\
+		'	* br\n'\
+		'	* col\n'\
+		'	* embed\n'\
+		'	* hr\n'\
+		'	* img\n'\
+		'	* input\n'\
+		'	* link\n'\
+		'	* meta\n'\
+		'	* param\n'\
+		'	* source\n'\
+		'	* track\n'\
+		'	* wbr\n'\
+		'	* ! (comment)\n'\
+		'\n'\
+		'## Indentation errors ##\n\n'\
+		'This tool use two indentation criteria:\n'\
+		'	1) Opening tag and closing tag are in the same line.\n'\
+		'	2) Opening tag and closing tag are not in the same line but both have the the same indentation.\n'\
+		'	3) The tool is "space" and "tab" sensitive, so it is recommended for the indentation, only use "spaces" or only use "tabs"\n'\
+		'\n'\
+		'✅ Examples of Good indentation\n\n'\
+		'01--<div><p>content</p></div>\n'\
+		'02\n'\
+		'03--<div>\n'\
+		'04----<p>content</p>\n'\
+		'05--</div>\n'\
+		'06\n'\
+		'07--<div>\n'\
+		'08----<p>\n'\
+		'09------content\n'\
+		'10----</p>\n'\
+		'11--</div>\n'\
+		'12\n\n'\
+		'❌ Examples of Bad indentation\n\n'\
+		'01--<div><p>\n'\
+		'02----content</p></div>\n'\
+		'03\n'\
+		'04----<div>\n'\
+		'05----<p>content</p>\n'\
+		'06--</div>\n'\
+		'07\n'\
+		'08--<div>\n'\
+		'09----<p>\n'\
+		'10------content\n'\
+		'11----</p>\n'\
+		'12----</div>\n'\
+		'13\n'\
+		)
 
 def processArgs():
 	global Report

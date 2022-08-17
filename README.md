@@ -31,10 +31,11 @@ The following self-closing tags are pre filtered in order to avoid the flag of t
 * wbr
 * ! (comment)
 
-# Indentation errors
+## Indentation errors
 This tool use two indentation criteria:
-1) opening tag and closing tag are in the same line.
-2) opening tag and closing tag are not in the same line but both have the the same indentation.
+1) Opening tag and closing tag are in the same line.
+2) Opening tag and closing tag are not in the same line but both have the the same indentation.
+3) The tool is 'space' and 'tab' sensitive, so it is recommended for the indentation, only use 'spaces' or only use 'tabs'
 ```
 ✅ Examples of Good indentation
 01--<div><p>content</p></div>
