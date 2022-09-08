@@ -10,8 +10,8 @@ class TestReport:
 
     def _firstLine(self) -> None:
         if len(self.name) <= 60:
-            self.lines.append(f"\n-------------------- {self.name.upper()} --------------------\n")
-        else: self.lines.append(f"\n{self.name.upper()}\n")
+            self.lines.append(f"\n-------------------- {self.name} --------------------\n")
+        else: self.lines.append(f"\n{self.name}\n")
 
     def addSection(self, *args: Section) -> Section:
         for arg in args:
@@ -26,8 +26,8 @@ class TestReport:
         self.name = new_name
         self.data[0] = {"type": 'title', "data": self.name}
         if len(self.name) <= 60:
-            self.lines[0] = f"\n---------------------- {self.name.upper()} ----------------------\n"
-        else: self.lines[0] = f"\n{self.name.upper()}\n"
+            self.lines[0] = f"\n---------------------- {self.name} ----------------------\n"
+        else: self.lines[0] = f"\n{self.name}\n"
 
     def print(self) -> None:
         for line in self.lines:

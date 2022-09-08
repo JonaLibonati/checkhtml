@@ -14,7 +14,7 @@ python3 checkhtml.py <html-path>
 ## Unclosed tags
 The tool finds where are located the unclosed tags.
 
-The following self-closing tags are pre filtered in order to avoid the flag of the expected unclosed tag:
+By default, The following self-closing tags are pre filtered in order to avoid the flag of the expected unclosed tag:
 * area
 * base
 * br
@@ -29,6 +29,7 @@ The following self-closing tags are pre filtered in order to avoid the flag of t
 * source
 * track
 * wbr
+* use
 * ! (comment)
 
 ## Indentation errors
