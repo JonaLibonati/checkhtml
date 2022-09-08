@@ -65,12 +65,10 @@ def checkSyntax(filePath):
 				tag_names.append(tag.replace("<","").replace(">",""))
 		return tag_names
 
-	def findUnclosedTags(tag_list, unclosed_tag_list = []):
+	def findErrors(tag_list, unclosed_tag_list = []):
 		filtered_tags = tag_list
 		first_tag = tag_list[0]
 		control_tag_list = tag_list[1:]
-		sub_tags_list = []
-		sub_unclosed_tags = []
 		unclosed_tags = unclosed_tag_list
 		unclosed = True
 
@@ -84,23 +82,37 @@ def checkSyntax(filePath):
 							filtered_tags.pop(i)
 							unclosed = False
 							break
-						""" n_close = n_close + 1 """
 					elif (first_tag['spaces'] >= control_tag['spaces'] and first_tag['tabs'] >= control_tag['tabs']) and first_tag['line'] != control_tag['line']:
 						break
-					""" else:
-						n_open = n_open + 1
-					sub_tags_list.append(control_tag) """
-		""" # Subloop for the nesting tags
-		while sub_tags_list != []:
-			response = findUnclosedTags(sub_tags_list, sub_unclosed_tags)
-			sub_tags_list = response[0]
-			sub_unclosed_tags = response[1]
-			#print(sub_tags_list)
-		# Adding errors comming from the Subloop
-		for sub_unclosed_tag in sub_unclosed_tags:
-			if not sub_unclosed_tag in unclosed_tag_list:
-				unclosed_tags.append(sub_unclosed_tag) """
+
 		# Adding error comming from the main loop
+		if unclosed and not first_tag in unclosed_tag_list:
+			unclosed_tags.append(first_tag)
+
+		return [filtered_tags, unclosed_tags]
+
+	def findUnclosedTags(tag_list, unclosed_tag_list = []):
+		filtered_tags = tag_list
+		first_tag = tag_list[0]
+		control_tag_list = tag_list[1:]
+		unclosed_tags = unclosed_tag_list
+		unclosed = True
+
+		filtered_tags.pop(0)
+		if len(filtered_tags) > 0 and not isClosingTag(first_tag['name']) and not first_tag in unclosed_tag_list:
+			n_open = 0
+			n_close = 0
+			for i, control_tag in enumerate(control_tag_list):
+				if first_tag['name'] == control_tag['name'].replace('/',''):
+					if isClosingTag(control_tag['name']):
+						if n_open == n_close:
+							filtered_tags.pop(i)
+							unclosed = False
+							break
+						n_close = n_close + 1
+					else:
+						n_open = n_open + 1
+
 		if unclosed and not first_tag in unclosed_tag_list:
 			unclosed_tags.append(first_tag)
 
@@ -108,8 +120,6 @@ def checkSyntax(filePath):
 
 	def findIndentationErrors(tag_list, error_list = [], unclosed_tags = []):
 		filtered_tags = []
-		sub_tags_list = []
-		sub_error_tags = []
 		errorList = error_list
 		errors = True
 
@@ -132,51 +142,34 @@ def checkSyntax(filePath):
 		n_close = 0
 		control_tag = {}
 		# Main loop
-		for i, control_tag in enumerate(control_tag_list):
-			control_tag = control_tag
-			# Conditions when tag names are the same:
-			#	1) opening tag and closing tag are in the same line
-			#	2) opening tag and closing tag are not in the same line but both have the the same indentation.
-			if first_tag['name'] == control_tag['name'].replace('/',''):
-				if isClosingTag(control_tag['name']):
-					if n_open == n_close:
-						if (first_tag['spaces'] == control_tag['spaces'] and first_tag['tabs'] == control_tag['tabs']) or (first_tag['line'] == control_tag['line']):
-							errors = False
-						filtered_tags.pop(i)
-						break
-					n_close = n_close + 1
-				else:
-					n_open = n_open + 1
-				sub_tags_list.append(control_tag)
-			# Conditions to flag the following indentation errors:
-			# 	e.g.
-			#		<ul>
-			#			<li><h2>example text</h2></li>
-			#	<li> (wrong indentation)
-			#				<h2>example text</h2>
-			#	</li> (wrong indentation)
-			#		</ul>
-			if (control_tag['spaces'] <= first_tag['spaces'] and control_tag['tabs'] <= first_tag['tabs']):
-				if sub_tags_list != []:
-					if sub_tags_list[-1]['line'] != control_tag['line']:
-						errorList.append(('', control_tag))
-				elif (first_tag['line'] != control_tag['line']):
+		if len(filtered_tags) > 0 and not isClosingTag(first_tag['name']):
+			for i, control_tag in enumerate(control_tag_list):
+				control_tag = control_tag
+				# Conditions when tag names are the same:
+				#	1) opening tag and closing tag are in the same line
+				#	2) opening tag and closing tag are not in the same line but both have the the same indentation.
+				if first_tag['name'] == control_tag['name'].replace('/',''):
+					if isClosingTag(control_tag['name']):
+						if n_open == n_close:
+							if (first_tag['spaces'] == control_tag['spaces'] and first_tag['tabs'] == control_tag['tabs']) or (first_tag['line'] == control_tag['line']):
+								errors = False
+							filtered_tags.pop(i)
+							break
+						n_close = n_close + 1
+					else:
+						n_open = n_open + 1
+				# Conditions to flag the following indentation errors:
+				# 	e.g.
+				#		<ul>
+				#			<li><h2>example text</h2></li>
+				#	<li> (wrong indentation)
+				#				<h2>example text</h2>
+				#	</li> (wrong indentation)
+				#		</ul>
+				if (control_tag['spaces'] <= first_tag['spaces'] and control_tag['tabs'] <= first_tag['tabs']) and (first_tag['line'] != control_tag['line']):
 					errorList.append(('', control_tag))
-
-		# Subloop for the nesting tags
-		while sub_tags_list != []:
-			response = findIndentationErrors(sub_tags_list, sub_error_tags)
-			sub_tags_list = response[0]
-			sub_error_tags = response[1]
-		# Adding errors comming from the Subloop
-		for sub_error_tag in sub_error_tags:
-			if not sub_error_tag in errorList:
-				errorList.append(sub_error_tag)
-		# Adding error comming from the main loop
-		if control_tag == {}:
-			control_tag.update({'name': 'undefined', 'line': 'undefined'})
-
-		if errors and not (first_tag, control_tag) in errorList and first_tag['name'] == control_tag['name'].replace('/',''):
+		
+		if control_tag != {} and errors and not (first_tag, control_tag) in errorList and first_tag['name'] == control_tag['name'].replace('/',''):
 			errorList.append((first_tag, control_tag))
 
 		return [filtered_tags, errorList]
@@ -189,7 +182,7 @@ def checkSyntax(filePath):
 			section.addResult(r)
 		else:
 			for error in unclosed:
-				r = testReport.Result(f"Unclosed tag found. <{error['name']}> tag in line {error['line']}. {error}", 'fail')
+				r = testReport.Result(f"Unclosed tag found. <{error['name']}> tag in line {error['line']}. || {error}", 'fail')
 				section.addResult(r)
 		if section.results != []:
 			Report.addSection(section)
@@ -205,13 +198,13 @@ def checkSyntax(filePath):
 				if error[0] == '':
 					r = testReport.Result(
 						'Indentation error found. Check the syntax for:\n'\
-						f"	Tag: <{error[1]['name']}> in line {error[1]['line']}\n", 'fail')
+						f"	Tag: <{error[1]['name']}> in line {error[1]['line']}. || {error[1]}\n", 'fail')
 					section.addResult(r)
 				else:
 					r = testReport.Result(
 						'Indentation error found. Check the syntax for:\n'\
-						f"	Opening tag: <{error[0]['name']}> in line {error[0]['line']}\n"\
-						f"	Closing tag: <{error[1]['name']}> in line {error[1]['line']}\n", 'fail')
+						f"	Opening tag: <{error[0]['name']}> in line {error[0]['line']}. || {error[0]}\n"\
+						f"	Closing tag: <{error[1]['name']}> in line {error[1]['line']}. || {error[1]}\n", 'fail')
 					section.addResult(r)
 		if section.results != []:
 			comment = testReport.Result(
@@ -241,11 +234,20 @@ def checkSyntax(filePath):
 	indentation = []
 	#List of unclosed tag errors.
 	unclosed = []
+	#Finding errors
+	while filtered_tags != []:
+		response = findErrors(filtered_tags, unclosed)
+		filtered_tags = response[0]
+		unclosed = response[1]
+
+	filtered_tags = unclosed
+	unclosed = []
 	#Finding Unclosed tag errors
 	while filtered_tags != []:
 		response = findUnclosedTags(filtered_tags, unclosed)
 		filtered_tags = response[0]
 		unclosed = response[1]
+
 
 	if __opFlags__ == '' or __opFlags__ == '-i':
 		#Filtering self closing tags
